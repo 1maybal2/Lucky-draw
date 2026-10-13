@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DIVE AI Lucky Draw</title>
+<style>
+:root{--ink:#3b3f6b;--blue:#a8d8f7;--pink:#ffc2d6;--cream:#fff4dc;--mint:#c9f0dc;--lav:#ddd0f7;--card:#ffffffcc}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{font-family:"Trebuchet MS","Comic Sans MS","Segoe UI",system-ui,sans-serif;color:var(--ink);
+background:radial-gradient(circle at 10% 10%,#ffe3ee 0,transparent 40%),radial-gradient(circle at 90% 20%,#d6ecff 0,transparent 40%),radial-gradient(circle at 50% 100%,#e6dcff 0,transparent 50%),#fff8fc;min-height:100vh}
+header{display:flex;align-items:center;justify-content:center;gap:14px;padding:12px 16px 0}
+header svg{width:64px;height:74px}
+h1{margin:0;font-size:clamp(24px,3.4vw,44px);letter-spacing:.5px}
+h1 small{display:block;font-size:.4em;font-weight:600;opacity:.7}
+main{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(300px,1fr);gap:20px;padding:12px 20px 24px;max-width:1500px;margin:auto;align-items:start}
+.stage{display:flex;flex-direction:column;align-items:center;gap:14px}
+.wheelbox{position:relative;width:min(76vh,100%,640px);aspect-ratio:1}
+canvas#wheel{width:100%;height:100%;display:block;filter:drop-shadow(0 8px 14px #8f8fc455)}
+.pointer{position:absolute;left:50%;top:-8px;width:44px;height:52px;transform:translateX(-50%);z-index:2;filter:drop-shadow(0 3px 3px #0003)}
+.hub{position:absolute;left:50%;top:50%;width:19%;transform:translate(-50%,-50%);z-index:2;pointer-events:none}
+.hub svg{width:100%;display:block}
+.card{background:var(--card);border:3px solid #fff;border-radius:26px;padding:16px 18px;box-shadow:0 8px 24px #b7a8e033}
+.panel{display:flex;flex-direction:column;gap:14px}
+h2{margin:0 0 8px;font-size:18px}
+textarea{width:100%;height:160px;resize:vertical;border:3px solid var(--lav);border-radius:16px;padding:10px 12px;font:inherit;font-size:16px;color:var(--ink);background:#fff}
+textarea:disabled{background:#f2eefb;opacity:.8}
+textarea:focus{outline:3px solid var(--pink);border-color:var(--pink)}
+.count{font-size:14px;margin-top:6px;min-height:20px}
+.count.warn{color:#c2487a;font-weight:700}
+.prizes{display:flex;flex-direction:column;gap:8px}
+.prize{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:16px;background:#fff;border:3px solid transparent;font-weight:700}
+.prize .em{font-size:24px}
+.prize.now{border-color:var(--pink);background:#fff0f6;transform:scale(1.03)}
+.prize.done{opacity:.55;text-decoration:line-through}
+.prize .tag{margin-left:auto;font-size:12px;font-weight:600}
+button{font:inherit;font-weight:800;color:var(--ink);border:0;border-radius:999px;padding:12px 20px;cursor:pointer;background:var(--lav);box-shadow:0 4px 0 #b9a8e6;transition:transform .08s,box-shadow .08s}
+button:hover:not(:disabled){transform:translateY(-1px)}
+button:active:not(:disabled){transform:translateY(3px);box-shadow:0 1px 0 #b9a8e6}
+button:disabled{opacity:.45;cursor:not-allowed}
+button:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+#spin{font-size:clamp(20px,2.4vw,30px);padding:14px 44px;background:var(--pink);box-shadow:0 5px 0 #f29bbb}
+#spin:active:not(:disabled){box-shadow:0 1px 0 #f29bbb}
+.row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.small{padding:8px 14px;font-size:14px;background:var(--mint);box-shadow:0 3px 0 #9ed8bb}
+ol#wl{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px}
+#wl li{display:flex;align-items:center;gap:10px;background:#fff;border-radius:16px;padding:8px 12px;font-weight:700}
+#wl li span.p{margin-left:auto;font-size:13px;font-weight:600;opacity:.75}
+.empty{opacity:.6;font-size:14px}
+#msg{min-height:24px;font-weight:700;text-align:center}
+#overlay{position:fixed;inset:0;background:#6a5acd55;backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;z-index:10;padding:16px}
+#overlay.show{display:flex}
+.modal{background:#fffdfb;border:5px solid #fff;border-radius:36px;padding:24px 30px;text-align:center;max-width:520px;width:100%;box-shadow:0 20px 60px #4b3f9b55;animation:pop .5s cubic-bezier(.2,1.5,.4,1)}
+.modal svg{width:120px;animation:bounce 1s infinite alternate ease-in-out}
+.modal h3{margin:6px 0;font-size:22px}
+.modal .who{font-size:clamp(34px,7vw,56px);font-weight:900;color:#e0629a;word-break:break-word;line-height:1.1}
+.modal .what{font-size:22px;margin:10px 0 18px;font-weight:800;background:var(--cream);display:inline-block;padding:6px 18px;border-radius:999px}
+canvas#confetti{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:20}
+@keyframes pop{from{transform:scale(.4);opacity:0}to{transform:scale(1);opacity:1}}
+@keyframes bounce{to{transform:translateY(-12px) rotate(3deg)}}
+@media (max-width:900px){main{grid-template-columns:1fr}.wheelbox{width:min(92vw,560px)}}
+@media (prefers-reduced-motion:reduce){.modal,.modal svg{animation:none}}
+:fullscreen body{overflow:auto}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute"><defs>
+<symbol id="mascot" viewBox="0 0 120 140">
+<line x1="60" y1="32" x2="60" y2="12" stroke="#7fb8e6" stroke-width="4" stroke-linecap="round"/>
+<circle cx="60" cy="9" r="6" fill="#ffb3c7" stroke="#fff" stroke-width="2"/>
+<ellipse cx="44" cy="130" rx="12" ry="7" fill="#8cc4ee"/><ellipse cx="76" cy="130" rx="12" ry="7" fill="#8cc4ee"/>
+<ellipse cx="13" cy="86" rx="10" ry="7" fill="#8cc4ee" transform="rotate(-30 13 86)"/><ellipse cx="107" cy="86" rx="10" ry="7" fill="#8cc4ee" transform="rotate(30 107 86)"/>
+<ellipse cx="60" cy="82" rx="48" ry="48" fill="#a8d8f7" stroke="#7fb8e6" stroke-width="3"/>
+<ellipse cx="60" cy="86" rx="34" ry="29" fill="#fff4dc"/>
+<circle cx="48" cy="82" r="4.5" fill="#2b2d42"/><circle cx="72" cy="82" r="4.5" fill="#2b2d42"/>
+<circle cx="49.5" cy="80.5" r="1.5" fill="#fff"/><circle cx="73.5" cy="80.5" r="1.5" fill="#fff"/>
+<ellipse cx="38" cy="93" rx="6.5" ry="4.2" fill="#ffadc6" opacity=".85"/><ellipse cx="82" cy="93" rx="6.5" ry="4.2" fill="#ffadc6" opacity=".85"/>
+<path d="M54 94 Q60 100 66 94" stroke="#2b2d42" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+</symbol></defs></svg>
+
+<header>
+  <svg><use href="#mascot"/></svg>
+  <h1>DIVE AI Lucky Draw<small>Spin the wheel, win a prize!</small></h1>
+</header>
+
+<main>
+  <section class="stage">
+    <div class="wheelbox">
+      <svg class="pointer" viewBox="0 0 44 52"><path d="M22 50 L3 12 Q22 -4 41 12 Z" fill="#ff7fa8" stroke="#fff" stroke-width="4" stroke-linejoin="round"/><circle cx="22" cy="16" r="5" fill="#fff"/></svg>
+      <canvas id="wheel" width="800" height="800" aria-label="Prize wheel"></canvas>
+      <div class="hub"><svg viewBox="0 0 120 140"><use href="#mascot"/></svg></div>
+    </div>
+    <div id="msg" aria-live="polite"></div>
+    <div class="row">
+      <button id="spin">Spin! (Space)</button>
+    </div>
+  </section>
+
+  <aside class="panel">
+    <div class="card">
+      <h2>Participants (one per line, max 15)</h2>
+      <textarea id="names" placeholder="Type or paste names here&#10;Alice&#10;Bob&#10;Chloe"></textarea>
+      <div class="count" id="count"></div>
+    </div>
+    <div class="card">
+      <h2>Prizes</h2>
+      <div class="prizes" id="prizes"></div>
+    </div>
+    <div class="card">
+      <h2>Winners</h2>
+      <ol id="wl"></ol>
+    </div>
+    <div class="row">
+      <button class="small" id="mute">Sound: on</button>
+      <button class="small" id="fs">Full screen</button>
+      <button class="small" id="reset" style="background:var(--pink);box-shadow:0 3px 0 #f29bbb">Reset</button>
+    </div>
+  </aside>
+</main>
+
+<div id="overlay" role="dialog" aria-modal="true">
+  <div class="modal">
+    <svg viewBox="0 0 120 140"><use href="#mascot"/></svg>
+    <h3>Congratulations!</h3>
+    <div class="who" id="wName"></div>
+    <div class="what" id="wPrize"></div>
+    <div class="row">
+      <button id="accept">Accept winner</button>
+      <button id="absent" class="small" style="background:var(--cream);box-shadow:0 3px 0 #e8d3a0">Absent, re-spin</button>
+    </div>
+  </div>
+</div>
+<canvas id="confetti"></canvas>
+
+<script>
+(()=>{
+const PRIZES=[{n:'Starbucks Coupon',e:'☕'},{n:'AirPods Pro',e:'🎧'},{n:'iPhone 18 Pro Max',e:'📱'}];
+const COLORS=['#ffd1dc','#c9e8ff','#d4f5dd','#fff1b8','#e3d4ff','#ffd9b8','#bff0ee','#f8c8f0'];
+const MAX=15, SPIN_MS=5000, TAU=Math.PI*2;
+const $=id=>document.getElementById(id);
+const cv=$('wheel'), ctx=cv.getContext('2d');
+let pool=[], round=0, rot=0, spinning=false, winners=[], started=false, pending=null, muted=false, audio=null;
+
+/* ---------- names ---------- */
+function parse(){
+  const seen=new Set(), out=[]; let dupes=0, over=0;
+  $('names').value.split(/\r?\n/).forEach(l=>{
+    const s=l.trim(); if(!s) return;
+    const k=s.toLowerCase();
+    if(seen.has(k)){dupes++;return}
+    seen.add(k);
+    if(out.length>=MAX){over++;return}
+    out.push(s);
+  });
+  return {out,dupes,over};
+}
+function refreshNames(){
+  const {out,dupes,over}=parse();
+  pool=out; updateCount(dupes,over); draw(); updateUI();
+}
+function updateCount(d=0,o=0){
+  const c=$('count'); let t=pool.length+' / '+MAX+' names';
+  c.className='count';
+  if(o){t+=' – '+o+' over the limit ignored';c.className='count warn'}
+  if(d){t+=' – '+d+' duplicate'+(d>1?'s':'')+' removed'}
+  c.textContent=t;
+}
+
+/* ---------- drawing ---------- */
+function draw(){
+  const S=cv.width, c=S/2, R=c-26;
+  ctx.clearRect(0,0,S,S);
+  // outer ring
+  ctx.beginPath();ctx.arc(c,c,c-6,0,TAU);ctx.fillStyle='#fff';ctx.fill();
+  ctx.lineWidth=8;ctx.strokeStyle='#ffc2d6';ctx.stroke();
+  for(let i=0;i<24;i++){const a=i/24*TAU;ctx.beginPath();ctx.arc(c+Math.cos(a)*(c-16),c+Math.sin(a)*(c-16),4,0,TAU);ctx.fillStyle=i%2?'#c9e8ff':'#fff1b8';ctx.fill()}
+  const n=pool.length;
+  if(!n){
+    ctx.beginPath();ctx.arc(c,c,R,0,TAU);ctx.fillStyle='#efe9fb';ctx.fill();
+    ctx.fillStyle='#3b3f6b';ctx.font='bold 40px "Trebuchet MS",sans-serif';ctx.textAlign='center';
+    ctx.fillText(round>=3?'All prizes drawn!':'Add names to start',c,c+90);return;
+  }
+  const seg=TAU/n;
+  ctx.save();ctx.translate(c,c);ctx.rotate(rot);
+  for(let i=0;i<n;i++){
+    ctx.beginPath();ctx.moveTo(0,0);ctx.arc(0,0,R,i*seg,(i+1)*seg);ctx.closePath();
+    ctx.fillStyle=COLORS[i%COLORS.length];ctx.fill();
+    ctx.lineWidth=4;ctx.strokeStyle='#fff';ctx.stroke();
+    ctx.save();ctx.rotate((i+.5)*seg);
+    ctx.fillStyle='#3b3f6b';ctx.textAlign='right';ctx.textBaseline='middle';
+    const fs=Math.max(22,Math.min(46,R*.9/Math.max(n,3)*1.4));
+    ctx.font='bold '+fs+'px "Trebuchet MS","Comic Sans MS",sans-serif';
+    let t=pool[i];if(t.length>13)t=t.slice(0,12)+'…';
+    ctx.fillText(t,R-26,0);ctx.restore();
+  }
+  ctx.restore();
+}
+
+/* ---------- sound ---------- */
+function ac(){if(!audio){try{audio=new (window.AudioContext||window.webkitAudioContext)()}catch(e){}}
+  if(audio&&audio.state==='suspended')audio.resume();return audio}
+function tone(f,t0,d,type='triangle',v=.2){
+  const a=ac();if(!a||muted)return;
+  const o=a.createOscillator(),g=a.createGain();
+  o.type=type;o.frequency.value=f;
+  g.gain.setValueAtTime(0,a.currentTime+t0);
+  g.gain.linearRampToValueAtTime(v,a.currentTime+t0+.01);
+  g.gain.exponentialRampToValueAtTime(.0001,a.currentTime+t0+d);
+  o.connect(g).connect(a.destination);o.start(a.currentTime+t0);o.stop(a.currentTime+t0+d+.05);
+}
+const tick=()=>tone(900+Math.random()*80,0,.05,'square',.06);
+function fanfare(){
+  [523,659,784,1047].forEach((f,i)=>tone(f,i*.13,.3,'triangle',.25));
+  [523,659,784,1047].forEach(f=>tone(f,.6,.9,'triangle',.18));
+  [1319,1568,2093].forEach((f,i)=>tone(f,.75+i*.1,.5,'sine',.1));
+}
+
+/* ---------- confetti ---------- */
+const cf=$('confetti'),cx=cf.getContext('2d');let parts=[],cfRun=false;
+function sizeCf(){cf.width=innerWidth;cf.height=innerHeight}
+addEventListener('resize',sizeCf);sizeCf();
+function burst(){
+  const cols=[...COLORS,'#ff7fa8','#7fc4ff','#ffd24d'];
+  for(let i=0;i<220;i++){
+    const left=i%2===0;
+    parts.push({x:left?0:cf.width,y:cf.height*.7,vx:(left?1:-1)*(4+Math.random()*10),vy:-(8+Math.random()*14),
+      w:8+Math.random()*8,h:5+Math.random()*7,r:Math.random()*TAU,vr:(Math.random()-.5)*.4,c:cols[i%cols.length]});
+  }
+  if(!cfRun){cfRun=true;requestAnimationFrame(stepCf)}
+}
+function stepCf(){
+  cx.clearRect(0,0,cf.width,cf.height);
+  parts.forEach(p=>{p.vy+=.28;p.vx*=.992;p.x+=p.vx;p.y+=p.vy;p.r+=p.vr;
+    cx.save();cx.translate(p.x,p.y);cx.rotate(p.r);cx.fillStyle=p.c;cx.fillRect(-p.w/2,-p.h/2,p.w,p.h);cx.restore()});
+  parts=parts.filter(p=>p.y<cf.height+30);
+  if(parts.length)requestAnimationFrame(stepCf);else{cfRun=false;cx.clearRect(0,0,cf.width,cf.height)}
+}
+
+/* ---------- spin ---------- */
+function rnd(n){const a=new Uint32Array(1);crypto.getRandomValues(a);return a[0]%n}
+const norm=a=>((a%TAU)+TAU)%TAU;
+function spin(){
+  if(spinning||pending!==null||!pool.length||round>=PRIZES.length)return;
+  ac();
+  const n=pool.length, seg=TAU/n, idx=rnd(n);              // winner decided BEFORE the spin
+  const jitter=(Math.random()-.5)*seg*.7;
+  const target=-Math.PI/2-(idx+.5)*seg-jitter;             // pointer is at top
+  const delta=norm(target-rot)+TAU*5;
+  const r0=rot, t0=performance.now();
+  let last=Math.floor(norm(-Math.PI/2-rot)/seg);
+  spinning=true;lockUI();$('msg').textContent='Good luck!';
+  (function frame(now){
+    const t=Math.min(1,(now-t0)/SPIN_MS), e=1-Math.pow(1-t,3);
+    rot=r0+delta*e;draw();
+    const cur=Math.floor(norm(-Math.PI/2-rot)/seg);
+    if(cur!==last){tick();last=cur}
+    if(t<1)requestAnimationFrame(frame);
+    else{spinning=false;rot=norm(rot);announce(idx)}
+  })(t0);
+}
+function announce(idx){
+  pending=idx;
+  $('wName').textContent=pool[idx];
+  $('wPrize').textContent=PRIZES[round].e+' '+PRIZES[round].n;
+  $('overlay').classList.add('show');
+  $('msg').textContent='';
+  fanfare();burst();setTimeout(burst,700);
+  $('accept').focus();
+}
+function closeModal(){$('overlay').classList.remove('show');pending=null}
+$('accept').onclick=()=>{
+  if(pending===null)return;
+  winners.push({name:pool[pending],prize:PRIZES[round]});
+  pool.splice(pending,1);round++;started=true;
+  closeModal();rot=0;afterChange();
+};
+$('absent').onclick=()=>{
+  if(pending===null)return;
+  const gone=pool.splice(pending,1)[0];started=true;
+  closeModal();rot=0;afterChange();
+  if(pool.length)$('msg').textContent=gone+' is absent. Spin again for the same prize!';
+};
+function afterChange(){
+  draw();updateCount();updateUI();
+  if(round>=PRIZES.length)$('msg').textContent='All prizes awarded. Congratulations to everyone!';
+  else if(!pool.length)$('msg').textContent='No names left. Reset to start over.';
+  else $('msg').textContent='Next up: '+PRIZES[round].e+' '+PRIZES[round].n;
+}
+
+/* ---------- UI ---------- */
+function lockUI(){$('spin').disabled=true;$('reset').disabled=true;$('names').disabled=true}
+function updateUI(){
+  $('names').disabled=started||spinning;
+  $('spin').disabled=spinning||!pool.length||round>=PRIZES.length;
+  $('reset').disabled=spinning;
+  $('prizes').innerHTML=PRIZES.map((p,i)=>{
+    const cls=i<round?'done':i===round?'now':'';
+    const tag=i<round?'awarded':i===round?'up next':'';
+    return `<div class="prize ${cls}"><span class="em">${p.e}</span>${p.n}<span class="tag">${tag}</span></div>`}).join('');
+  const wl=$('wl');wl.innerHTML='';
+  if(!winners.length)wl.innerHTML='<li class="empty" style="background:none">No winners yet.</li>';
+  winners.forEach(w=>{const li=document.createElement('li');
+    li.innerHTML='<span>'+w.prize.e+'</span><span class="nm"></span><span class="p"></span>';
+    li.querySelector('.nm').textContent=w.name;li.querySelector('.p').textContent=w.prize.n;wl.appendChild(li)});
+}
+$('spin').onclick=spin;
+$('names').addEventListener('input',()=>{if(!started)refreshNames()});
+$('reset').onclick=()=>{
+  winners=[];round=0;rot=0;started=false;pending=null;
+  $('names').disabled=false;$('msg').textContent='';refreshNames();
+};
+$('mute').onclick=()=>{muted=!muted;$('mute').textContent='Sound: '+(muted?'off':'on')};
+$('fs').onclick=()=>{
+  if(document.fullscreenElement)document.exitFullscreen();
+  else document.documentElement.requestFullscreen&&document.documentElement.requestFullscreen();
+};
+document.addEventListener('keydown',e=>{
+  if(e.code==='Space'&&e.target.tagName!=='TEXTAREA'&&e.target.tagName!=='BUTTON'){e.preventDefault();spin()}
+});
+
+/* sample names so the wheel is not empty on first load */
+$('names').value='Alice\nBen\nChloe\nDaniel\nEmma\nFinn\nGrace\nHenry';
+refreshNames();
+})();
+</script>
+</body>
+</html>
